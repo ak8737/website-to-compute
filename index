@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>Solar Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f7f7f7; }
+    .container { max-width: 700px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);}
+    input, button { padding: 10px; margin: 5px 0; width: 100%; border-radius: 6px; border: 1px solid #ccc; }
+    button { background: green; color: white; font-size: 16px; cursor: pointer; }
+    button:hover { background: darkgreen; }
+    #result { white-space: pre-line; background: #e9ffe9; padding: 15px; border-radius: 8px; margin-top: 15px; }
+    canvas { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>🔆 Solar Calculator</h2>
+  <label>💡 मासिक बिजली बिल (₹)</label>
+  <input type="number" id="billInput" placeholder="उदा: 2500">
+
+  <label>⚡ कुल Load (kW)</label>
+  <input type="number" id="loadInput" placeholder="उदा: 3.5">
+
+  <button id="calculateBtn">Calculate</button>
+
+  <div id="result"></div>
+
+  <canvas id="solarChart"></canvas>
+</div>
+
+<script>
+// Subsidy Calculation
+function getSubsidy(kw) {
+    let central = 0, state = 0;
+
+    if (kw === 1) central = 30000;
+    else if (kw === 2) central = 60000;
+    else if (kw === 3) central = 78000;
+    else if (kw >= 4) central = 78000;
+
+    if (kw === 1) state = 15000;
+    else if (kw === 2) state = 30000;
+    else if (kw >= 3) state = 30000;
+
+    return { central, state, total: central + state };
+}
+
+// Installation Cost Slabs
+function getCost(kw) {
+    const costSlab = {
+        1: 70000, 2: 140000, 3: 195000,
+        4: 230000, 5: 290000, 6: 350000
+    };
+    return costSlab[kw] || (kw * 60000);
+}
+
+document.getElementById("calculateBtn").addEventListener("click", () => {
+    const billAmount = parseFloat(document.getElementById("billInput").value) || 0;
+    const loadKW = parseFloat(document.getElementById("loadInput").value) || 0;
+
+    if (billAmount <= 0 && loadKW <= 0) {
+        alert("कृपया बिल राशि या लोड दर्ज करें।");
+        return;
+    }
+
+    const unitRate = 8;
+    const unitsPerMonth = billAmount / unitRate;
+    const requiredKWfromBill = Math.ceil(unitsPerMonth / 120);
+    const requiredKWfromLoad = Math.ceil(loadKW);
+
+    const requiredKW = Math.max(requiredKWfromBill, requiredKWfromLoad);
+
+    const subsidy = getSubsidy(requiredKW);
+    const cost = getCost(requiredKW);
+    const netCost = cost - subsidy.total;
+
+    const resultText = `
+📊 मासिक यूनिट खपत: ~${unitsPerMonth.toFixed(0)} यूनिट  
+⚡ उपकरणों के आधार पर लोड: ~${loadKW.toFixed(2)} kW  
+☀️ सुझाया गया सोलर सिस्टम: ~${requiredKW} kW  
+
+💰 अनुमानित मासिक बचत: ₹${billAmount}  
+📅 सालाना बचत: ₹${(billAmount*12).toLocaleString()}  
+
+🏛 केंद्रीय सब्सिडी: ₹${subsidy.central.toLocaleString()}  
+🏢 राज्य सब्सिडी: ₹${subsidy.state.toLocaleString()}  
+🎉 कुल सब्सिडी: ₹${subsidy.total.toLocaleString()}  
+
+💵 Installation Cost: ₹${cost.toLocaleString()}  
+✅ Net Cost after Subsidy: ₹${netCost.toLocaleString()}  
+    `;
+
+    document.getElementById("result").innerText = resultText;
+
+    // Bar Chart
+    const ctx = document.getElementById('solarChart').getContext('2d');
+    if (window.solarChart) window.solarChart.destroy();
+    window.solarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Load (kW)', 'Suggested Solar (kW)'],
+            datasets: [{
+                label: 'kW',
+                data: [loadKW, requiredKW],
+                backgroundColor: ['#ff9933', '#3399ff']
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+});
+</script>
+
+</body>
+</html>
